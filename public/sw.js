@@ -1,7 +1,8 @@
 // Service Worker - Estratégia Visionária PWA
-// Versão: 1.0.1 (Safe Init)
+// Versão: 1.0.2 (Stable)
 
 const CACHE_NAME = 'estrategia-visionaria-v1';
+const OFFLINE_URL = '/offline.html';
 
 // Instalação
 self.addEventListener('install', () => {
@@ -15,36 +16,32 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// self.addEventListener('fetch', (event) => {
+// Interceptação de requisições
+self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Navegação SPA (páginas)
+  // Navegação SPA
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          return response;
-        })
-        .catch(() => {
-          return caches.match(OFFLINE_URL);
-        })
+      fetch(event.request).catch(() => {
+        return caches.match(OFFLINE_URL);
+      })
     );
     return;
   }
 
-  // Demais arquivos (css, js, imagens)
+  // Assets (css, js, imagens)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
 
-      return fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-          return response;
+      return fetch(event.request).then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, clone);
         });
+        return response;
+      });
     })
   );
 });
