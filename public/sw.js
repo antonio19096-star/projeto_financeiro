@@ -15,5 +15,36 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Fetch básico (necessário para PWA)
-self.addEventListener('fetch', () => {});
+// self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  // Navegação SPA (páginas)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          return response;
+        })
+        .catch(() => {
+          return caches.match(OFFLINE_URL);
+        })
+    );
+    return;
+  }
+
+  // Demais arquivos (css, js, imagens)
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        });
+    })
+  );
+});
