@@ -3,36 +3,32 @@ import { queryClientInstance } from './lib/query-client';
 import { pagesConfig } from './pages.config';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext'; 
-import PWAInstallPrompt from './PWAInstallPrompt'; 
+import PWAInstallPrompt from './components/PWAInstallPrompt'; 
 import { useEffect } from 'react';
 
-// --- CONFIGURAÇÃO DE ROTAS DINÂMICAS ---
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = Pages[mainPageKey];
 
 const LayoutWrapper = ({ children, currentPageName }) => {
-  return Layout ? 
-    <Layout currentPageName={currentPageName}>{children}</Layout> : 
-    <>{children}</>;
+  return Layout ? <Layout currentPageName={currentPageName}>{children}</Layout> : <>{children}</>;
 };
 
-// --- COMPONENTE DE APLICAÇÃO ---
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, authError } = useAuth();
+  const { isLoadingAuth } = useAuth();
 
-  // Registro do Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW error:', err));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error', err));
+      });
     }
   }, []);
 
-  // Tela de Carregamento
   if (isLoadingAuth) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-blue-500 font-bold animate-pulse">Iniciando Estratégia Visionária...</div>
+        <div className="text-blue-500 font-bold animate-pulse">Iniciando Dashboard...</div>
       </div>
     );
   }
@@ -40,46 +36,24 @@ const AuthenticatedApp = () => {
   return (
     <>
       <Routes>
-        {/* Rota Principal */}
-        <Route path="/" element={
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
-        } />
-
-        {/* Rotas Automáticas do Config */}
+        <Route path="/" element={<LayoutWrapper currentPageName={mainPageKey}><MainPage /></LayoutWrapper>} />
         {Object.entries(Pages).map(([path, PageComponent]) => (
-          <Route
-            key={path}
-            path={`/${path}`}
-            element={
-              <LayoutWrapper currentPageName={path}>
-                <PageComponent />
-              </LayoutWrapper>
-            }
-          />
+          <Route key={path} path={`/${path}`} element={<LayoutWrapper currentPageName={path}><PageComponent /></LayoutWrapper>} />
         ))}
-        <Route path="*" element={<PageNotFound />} />
       </Routes>
+      {/* Aqui a mudança: Inclusão do componente que você enviou */}
       <PWAInstallPrompt />
     </>
   );
 };
-
-// --- COMPONENTES DE SUPORTE (Evitam erro de importação) ---
-const PageNotFound = () => <div className="text-white p-10 text-center">Página não encontrada.</div>;
-const Toaster = () => null; 
-const NavigationTracker = () => null;
 
 export default function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <NavigationTracker />
           <AuthenticatedApp />
         </Router>
-        <Toaster />
       </QueryClientProvider>
     </AuthProvider>
   );
